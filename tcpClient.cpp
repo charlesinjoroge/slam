@@ -125,20 +125,47 @@ bool tcp_client::send_data(string data) {
 string tcp_client::receive(int size) {
 
     char buffer[size]; // the size should grow
-    size_t len = 1;
-    char *p;
-    ssize_t n;
+    string reply;
 
-    string reply; // will set to the buffer
-   	cout << "hello 1";
-    if(len > 0 && (n = recv(sock , p, len, 0)) < 0){
-
-    	exit(1);
-
+    if(recv(sock , buffer, sizeof(buffer) , 0) < 0){
+    	perror("recv error");
     }
+
+    reply = buffer;
 
     return reply; // return nothing if there was an error
 }
+
+string globalBuffer; // the global buffer
+
+string getJson(tcp_client client){
+
+    string final; // the string to return
+
+    globalBuffer.append(client.receive(1020)); // receive from the client
+
+    while(globalBuffer.length() != 0){
+        for(int i = 0; i < globalBuffer.length(); i++){
+            final += globalBuffer[i];
+
+            // cout << final[final.length() - 1] + " final";
+            // cout << (final[final.length() - 1] == '}');
+            // cout << globalBuffer[i + 1] + " global";
+            // cout <<  (globalBuffer[i + 1] == '{');
+
+            if(final[final.length() - 1] == '}' && globalBuffer[i + 1] == '{'){
+                globalBuffer = globalBuffer.substr(i , globalBuffer.length()); // chop the string
+                return final; // return the finished chunk
+            }
+        }
+        globalBuffer = client.receive(1020); // if nothing was found then move on
+    }
+
+
+    return final;
+
+}
+
  
 int main(int argc , char *argv[])
 {
@@ -166,7 +193,7 @@ int main(int argc , char *argv[])
     std::cout << "Sending base json ..." ;
     baseClient.send_data(baseDump);
 
-  while(1){
+ // while(1){
  	
  	// cout<<"-----------Odom-------------\n\n";
   //   //receive and echo reply
@@ -175,7 +202,7 @@ int main(int argc , char *argv[])
 
   //   cout<<"--------------Base------------\n\n";
     //receive and echo reply
-    cout<<baseClient.receive(2040);
+     cout << getJson(baseClient);
 
 //     cout<<"\n\n-----------Base part 2-------------\n\n";
 //     cout<<baseClient.receive(1020);
@@ -183,7 +210,7 @@ int main(int argc , char *argv[])
 //     cout<<baseClient.receive(1020);
 //     cout<<"\n\n----------------------------\n\n";
  	
-  }    
+// }    
 
     return 0;
 }
